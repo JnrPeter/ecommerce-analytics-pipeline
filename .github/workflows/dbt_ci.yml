@@ -1,0 +1,75 @@
+name: dbt CI
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'dbt_project/**'
+
+env:
+  PG_HOST: localhost
+  PG_PORT: 5433
+  PG_DATABASE: commerce
+  PG_USER: commerce_user
+  PG_PASSWORD: commerce_pass
+
+jobs:
+  dbt-build-and-test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: commerce
+          POSTGRES_USER: commerce_user
+          POSTGRES_PASSWORD: commerce_pass
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          pip install dbt-duckdb "dlt[duckdb,postgres,sql_database]" faker psycopg2-binary "psycopg[binary]" python-dotenv sqlalchemy
+
+      - name: Generate source data
+        run: |
+          cd data_generator
+          python generate.py
+
+      - name: Run dlt ingestion
+        run: |
+          python ingestion/load_to_warehouse.py
+
+      - name: Install dbt packages
+        working-directory: dbt_project
+        run: dbt deps
+
+      - name: Run dbt seed
+        working-directory: dbt_project
+        run: dbt seed
+
+      - name: Run dbt snapshot
+        working-directory: dbt_project
+        run: dbt snapshot
+
+      - name: Run dbt build and test
+        working-directory: dbt_project
+        run: dbt build --fail-fast
+
+      - name: Generate dbt docs
+        working-directory: dbt_project
+        run: dbt docs generate

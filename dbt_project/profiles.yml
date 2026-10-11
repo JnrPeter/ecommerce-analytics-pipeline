@@ -1,0 +1,15 @@
+commerce:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: "/opt/airflow/commerce_ingestion.duckdb"
+      threads: 4
+
+elementary:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: "/opt/airflow/commerce_ingestion.duckdb"
+      threads: 4

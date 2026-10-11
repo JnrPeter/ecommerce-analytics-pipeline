@@ -1,0 +1,14 @@
+# Data generation
+faker==28.4.1
+psycopg2-binary==2.9.9
+
+# Ingestion
+dlt[duckdb,postgres,sql_database]>=1.6.0
+
+# dbt
+dbt-core==1.9.0
+dbt-duckdb==1.9.1
+elementary-data==0.16.0
+
+# Utilities
+python-dotenv==1.0.1

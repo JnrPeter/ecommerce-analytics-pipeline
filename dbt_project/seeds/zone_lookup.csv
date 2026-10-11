@@ -1,0 +1,16 @@
+zone,region,area_type
+Downtown,Central,urban
+Westside,West,suburban
+Eastgate,East,suburban
+Northridge,North,suburban
+Southbank,South,urban
+Riverside,Central,urban
+Hilltop,North,residential
+Lakewood,West,residential
+Midtown,Central,urban
+Old Quarter,Central,urban
+Harbor District,South,commercial
+Greenfield,East,residential
+Sunset Park,West,residential
+Brookdale,North,suburban
+Crescent Bay,South,coastal
