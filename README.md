@@ -8,17 +8,6 @@ One command to run the entire stack:
 docker-compose up -d --build
 ```
 
-## What this project does
-
-Simulates a multi-category e-commerce marketplace with realistic operational data (customers, retailers, products, orders, order items) and runs a daily analytics pipeline that:
-
-1. **Generates changes** to the source database (new orders, price changes, zone moves, tier upgrades)
-2. **Incrementally syncs** PostgreSQL to DuckDB using dlt (merge strategy, cursor-based loading)
-3. **Captures history** with dbt snapshots before transformations run
-4. **Transforms data** through staging views, intermediate models, SCD Type 1/2 dimensions, and incremental fact tables
-5. **Monitors quality** with dbt tests, dbt_expectations range checks, and Elementary anomaly detection
-6. **Orchestrates everything** with Airflow on a @daily schedule
-
 ## Architecture
 
 ```
@@ -49,20 +38,6 @@ PostgreSQL (source) --> dlt (ingestion) --> DuckDB (warehouse) --> dbt (transfor
 | Orchestration | Airflow 3.0.1 | Daily pipeline: mutate > ingest > snapshot > build > report |
 | CI/CD | GitHub Actions | Full pipeline test on every PR |
 
-## Docker Compose services
-
-The containerized stack runs 5 services. Airflow 3.x requires separate processes for the API server, scheduler, and DAG processor.
-
-| Service | Role | Port |
-|---------|------|------|
-| postgres | Source database + Airflow metadata | 5433 |
-| airflow-api-server | Web UI + REST API | 8080 |
-| airflow-scheduler | Triggers and executes tasks | - |
-| airflow-dag-processor | Parses DAG files (required in Airflow 3.x) | - |
-| airflow-init | One-shot: runs `airflow db migrate` then exits | - |
-
-All Airflow services share one custom image built from `apache/airflow:3.0.1-python3.12` with dbt-duckdb, dlt, elementary-data, and faker baked in.
-
 ## Getting started
 
 **Prerequisites:** Docker and Docker Compose.
@@ -86,11 +61,35 @@ On first run, you need to generate the initial source data:
 docker-compose exec airflow-scheduler bash -c "python /opt/airflow/data_generator/generate.py"
 ```
 
-After that, trigger the DAG from the Airflow UI or wait for the @daily schedule. The pipeline runs 5 tasks in sequence:
+After that, trigger the DAG from the Airflow UI or wait for the @daily schedule.
+
+## Docker Compose services
+
+The containerized stack runs 5 services. Airflow 3.x requires separate processes for the API server, scheduler, and DAG processor.
+
+| Service | Role | Port |
+|---------|------|------|
+| postgres | Source database + Airflow metadata | 5433 |
+| airflow-api-server | Web UI + REST API | 8080 |
+| airflow-scheduler | Triggers and executes tasks | - |
+| airflow-dag-processor | Parses DAG files (required in Airflow 3.x) | - |
+| airflow-init | One-shot: runs `airflow db migrate` then exits | - |
+
+All Airflow services share one custom image built from `apache/airflow:3.0.1-python3.12` with dbt-duckdb, dlt, elementary-data, and faker baked in.
+
+## The daily pipeline
+
+The DAG runs 5 tasks in sequence on a @daily schedule:
 
 ```
 mutate_source_data > ingest_to_warehouse > dbt_snapshot > dbt_build > elementary_report
 ```
+
+1. **mutate_source_data** generates daily changes to the source database (500 new orders, price changes, zone moves, tier upgrades)
+2. **ingest_to_warehouse** incrementally syncs PostgreSQL to DuckDB using dlt (merge strategy, cursor-based loading)
+3. **dbt_snapshot** captures SCD versions before transformations run (must run before build)
+4. **dbt_build** runs all staging views, intermediate models, dimensions, fact tables, and 64 tests
+5. **elementary_report** generates an HTML quality dashboard with anomaly detection
 
 ## dbt models
 
